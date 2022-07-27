@@ -94,15 +94,20 @@ def call_p0(p):
 p0 = Pin(25, Pin.IN, Pin.PULL_UP)
 p0.irq( call_p0,  trigger=Pin.IRQ_FALLING)
 
-sample = False
+f_sample = False
 def call_t0(t):
     global counter_p0
-    global sample
-    sample = True
+    global f_sample
+    f_sample = True
     print('P0=', counter_p0)
 #Configura timer 0 con el tiempo de muestreo
 t0 = machine.Timer(0)
 t0.init(period=2000, callback=call_t0)
+#configuración de hora de almacenamiento en minutos
+i_save = 1
+time_save= list(time.gmtime())
+time_save[5] =0
+time_save = time.mktime(time_save)+i_save*60
 
 
 while True:
@@ -116,9 +121,9 @@ while True:
         conn.send(response)
         conn.close()
     except  (OSError):
-        print('no se encontró conexión...', end= ' ')
-    if sample == True:
-        sample = False
+        print('*', end= ' ')
+    if f_sample == True:
+        f_sample = False
         print("Tomando muestreo")
         #print('SD:', dlog.check_SD(sd))
         Tp, p =bmp180.pressure(i2c)
@@ -136,3 +141,10 @@ while True:
             360*wd/4095,
             )
         print(data)
+    time_now = time.gmtime()
+    if time.mktime(time_now) >= time_save:
+        print('')
+        time_save = list(time_now)
+        time_save[5] =0
+        time_save = time.mktime(time_save) + i_save*60
+        print('minuto:', time_now)
