@@ -84,19 +84,26 @@ s.settimeout(0)
 adc_wd = machine.ADC(Pin(33))
 adc_wd.atten(machine.ADC.ATTN_11DB)
 
-counter=0
-def call_p1(p):
-    global counter
-    counter +=1
-    print(p.value(), counter, time.ticks_ms())
+#conteo de pulsos 0
+counter_p0=0
+def call_p0(p):
+    global counter_p0
+    counter_p0 +=1
+    print(p.value(), counter_p0, time.ticks_ms())
 
 p0 = Pin(25, Pin.IN, Pin.PULL_UP)
-p0.irq( call_p1,  trigger=Pin.IRQ_FALLING)
-def call_t1(t):
-    global counter
-    print(t, counter)
-t1 = machine.Timer(0)
-t1.init(period=2000, callback=call_t1)
+p0.irq( call_p0,  trigger=Pin.IRQ_FALLING)
+
+sample = False
+def call_t0(t):
+    global counter_p0
+    global sample
+    sample = True
+    print('P0=', counter_p0)
+#Configura timer 0 con el tiempo de muestreo
+t0 = machine.Timer(0)
+t0.init(period=2000, callback=call_t0)
+
 
 while True:
     #print('aceptando conexión... ', end=' ')
@@ -109,23 +116,23 @@ while True:
         conn.send(response)
         conn.close()
     except  (OSError):
-        print('error...', end= ' ')
-    print('esperando...')
-    sleep(5.0)
-    #print('SD:', dlog.check_SD(sd))
-    
-    Tp, p =bmp180.pressure(i2c)
-    now = rtc.datetime()
-    wd = adc_wd.read()
-    data = '{}/{:02}/{:02} {:02}:{:02}:{:02},{},{},{}'.format(
-        now[0],
-        now[1],
-        now[2],
-        now[4],
-        now[5],
-        now[6],
-        p/100,
-        Tp/10,
-        360*wd/4095,
-        )
-    print(data)
+        print('no se encontró conexión...', end= ' ')
+    if sample == True:
+        sample = False
+        print("Tomando muestreo")
+        #print('SD:', dlog.check_SD(sd))
+        Tp, p =bmp180.pressure(i2c)
+        now = rtc.datetime()
+        wd = adc_wd.read()
+        data = '{}/{:02}/{:02} {:02}:{:02}:{:02},{},{},{}'.format(
+            now[0],
+            now[1],
+            now[2],
+            now[4],
+            now[5],
+            now[6],
+            p/100,
+            Tp/10,
+            360*wd/4095,
+            )
+        print(data)
