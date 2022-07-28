@@ -103,12 +103,26 @@ def call_t0(t):
 #Configura timer 0 con el tiempo de muestreo
 t0 = machine.Timer(0)
 t0.init(period=2000, callback=call_t0)
+
+def update_min(time_now, d_minutes):
+    time_new = list(time_now)
+    time_new[5] =0
+    time_new = time.mktime(time_new) +d_minutes*60
+    return time_new
+
+time_now = time.gmtime()
+print('actual:', time_now)
 #configuración de hora de almacenamiento en minutos
 i_save = 1
-time_save= list(time.gmtime())
-time_save[5] =0
-time_save = time.mktime(time_save)+i_save*60
-
+time_save= update_min(time_now, i_save)
+print('save:', time.gmtime(time_save))
+#configuración de hora de envío en minutos
+i_send = 10
+time_send = list(time_now)
+time_send[4] = (time_now[4]//i_send)*i_send
+time_send[5] =0
+time_send = time.mktime(time_send) +i_send*60
+print('send:', time.gmtime(time_send))
 
 while True:
     #print('aceptando conexión... ', end=' ')
@@ -144,7 +158,9 @@ while True:
     time_now = time.gmtime()
     if time.mktime(time_now) >= time_save:
         print('')
-        time_save = list(time_now)
-        time_save[5] =0
-        time_save = time.mktime(time_save) + i_save*60
+        time_save = update_min( time_now, i_save)
         print('minuto:', time_now)
+    if time.mktime(time_now) >= time_send:
+        print('')
+        time_send = update_min( time_now, i_send)
+        print('send:', time_send)
