@@ -9,7 +9,7 @@ def check_SD(sd, path = '/sd' ):
     #print(sd) 
     try:
         os.mount(sd ,path )
-        os.umount( path)
+        #os.umount( path)
     except:
         return False
     return True

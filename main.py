@@ -15,9 +15,9 @@ print('fecha:', now)
 #print(response.text)
 #print('dt:', time.ticks_diff(time.ticks_ms(), t1))
 #print(t1)
-data ="---"+",---"*3
+data_str ="---"+",---"*3
 def web_page():
-  global data
+  global data_str
   now = rtc.datetime()
   date_str = []
   for d in now:
@@ -28,12 +28,16 @@ def web_page():
           "Presión",
           "Temperatura (p)",
           "Viento (dir)",
+          "UV",
+          "Radiación",
           ]
   units =[
           "UTC",
           "mbar",
           "C",
           "º",
+          "",
+          "W/m2",
           ]
 
   html = """<html lang="es"><head>
@@ -65,7 +69,7 @@ def web_page():
   <body><h1> Últimos datos recibidos:</h1>"""
   html += '<table id="data_table" >'
   html += '<tr> <th> Variable </th> <th> Valor</th> <th> Unidad</th></tr>'
-  for i,d in enumerate(data.split(',')):
+  for i,d in enumerate(data_str.split(',')):
           html += '<tr> '
           html += '<td>'+header[i]+'</td>'
           html += '<td>'+d +'</td>'
@@ -83,6 +87,10 @@ s.settimeout(0)
 #canales analógicos
 adc_wd = machine.ADC(Pin(33))
 adc_wd.atten(machine.ADC.ATTN_11DB)
+adc_uv= machine.ADC(Pin(34))
+adc_uv.atten(machine.ADC.ATTN_11DB)
+adc_sun = machine.ADC(Pin(35))
+adc_sun.atten(machine.ADC.ATTN_11DB)
 
 #conteo de pulsos 0
 counter_p0=0
@@ -124,26 +132,46 @@ time_send[5] =0
 time_send = time.mktime(time_send) +i_send*60
 print('send:', time.gmtime(time_send))
 
+def data_clean(data):
+    for k in data.keys():
+        data[k] =0
+    return data
+def data_mean(data, ndata):
+    for k in data.keys():
+        data[k]/=ndata
+    return data
+data_dic = {}
+data_dic['ndata']=0
+data_dic['data'] = {}
+data = data_dic['data']
+data['P'] =0
+data['Tp'] =0
+data['uv'] =0
+data['sun'] =0
+#data['wd'] =0
+#data['ws'] =0
 while True:
-    #print('aceptando conexión... ', end=' ')
-    try:
-        conn, addr = s.accept()
-        #print('Got a connection from %s' % str(addr))
-        request = conn.recv(1024)
-        #print('Content = %s' % str(request))
-        response = web_page()
-        conn.send(response)
-        conn.close()
-    except  (OSError):
-        print('*', end= ' ')
     if f_sample == True:
         f_sample = False
         print("Tomando muestreo")
-        #print('SD:', dlog.check_SD(sd))
         Tp, p =bmp180.pressure(i2c)
         now = rtc.datetime()
         wd = adc_wd.read()
-        data = '{}/{:02}/{:02} {:02}:{:02}:{:02},{},{},{}'.format(
+        uv = adc_uv.read()
+        sun = adc_sun.read()
+        data = data_dic['data']
+        data_dic['ndata'] +=1
+        data['P'] += p
+        data['Tp'] += Tp
+        data['uv'] += uv
+        data['sun'] += sun
+        #data['wd'] += wd
+
+        for k in data.keys():
+            print(k, data[k], sep=':', end =' ')
+        print('')
+
+        data_str = '{}/{:02}/{:02} {:02}:{:02}:{:02},{},{},{},{},{}'.format(
             now[0],
             now[1],
             now[2],
@@ -153,14 +181,82 @@ while True:
             p/100,
             Tp/10,
             360*wd/4095,
+            uv,
+            sun,
             )
-        print(data)
+        print(data_str)
     time_now = time.gmtime()
+    #Almacenamiento
     if time.mktime(time_now) >= time_save:
         print('')
         time_save = update_min( time_now, i_save)
         print('minuto:', time_now)
+        data = data_dic['data']
+        data = data_mean(data, data_dic['ndata'])
+
+        data_str = '{}/{:02}/{:02} {:02}:{:02}:{:02}'.format(
+                time_now[0],
+                time_now[1],
+                time_now[2],
+                time_now[3],
+                time_now[4],
+                time_now[5],
+                )
+        print('ndata:', data_dic['ndata'], end=' ', sep='')
+        for k in data.keys():
+            data_str += ','+ str(data[k])
+            print(k, data[k], sep=':', end=' ')
+        print('')
+        data_str += '\n'
+        if dlog.check_SD(sd) == True:
+            print(os.listdir('/sd/'))
+            with open('/sd/test.txt', 'a') as file:
+                file.write(data_str)
+            os.umount('/sd')
+        data = data_clean(data)
+        data_dic['ndata'] = 0
+
     if time.mktime(time_now) >= time_send:
         print('')
         time_send = update_min( time_now, i_send)
         print('send:', time_send)
+    #print('aceptando conexión... ', end=' ')
+    try:
+        conn, addr = s.accept()
+        #print('Got a connection from %s' % str(addr))
+        request = str(conn.recv(1024))
+        #print('Content = %s' % str(request))
+    except  (OSError):
+        print('*', end= ' ')
+        continue
+    req_pos = request.find('/atmlog?')
+    print(request)
+    if req_pos == 6:
+        req_info = request.split()[1]
+        req_dic = {}
+        for info in req_info[8:].split('&'):
+            try:
+                info_k, info_val = info.split('=')
+                req_dic[info_k] = info_val
+            except:
+                pass
+        flag_view = False
+        if "view" in req_dic:
+            if req_dic["view"] == "TRUE":
+                flag_view = True
+        if "get_csv" in req_dic:
+            conn.send('HTTP/1.1 200 OK\r\n')
+            if flag_view==True:
+                conn.send('Content-Disposition: inline\r\n')
+                conn.send('Content-Type: text/txt\r\n\r\n')
+            else:
+                conn.send('Content-Disposition: attachment; filename="data.csv"\r\n')
+                conn.send('Content-Type: text/csv\r\n\r\n')
+            if dlog.check_SD(sd) == True:
+                with open('/sd/test.txt') as file:
+                    conn.send(file.read())
+                os.umount('/sd')
+    else:
+        response = web_page()
+        conn.send(response)
+    conn.close()
