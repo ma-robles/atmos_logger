@@ -8,6 +8,7 @@ import machine
 import os
 import datalog_lib as dlog
 import ds3231
+import netinfo
 
 # punto de acceso
 #ap= network.WLAN(network.AP_IF)
@@ -15,8 +16,6 @@ import ds3231
 #ap.config(essid='esp32', password='testesp32' )
 #print(ap.ifconfig())
 
-ssid = "TP-Link_A782"
-password = "00196215"
 wlan= dlog.wlan_connect( ssid, password )
 print(wlan.ifconfig())
 
