@@ -14,15 +14,19 @@ def check_SD(sd, path = '/sd' ):
         return False
     return True
 
-def get_date_NTP( host = "cronos.cenam.mx"):
+def get_date_NTP( host_list = ["cronos.cenam.mx"]):
     # sincroniza hora con servidor NTP
     # devuelve False si no se logra
-    ntptime.host = host
-    try:
-        ntptime.settime()
-    except:
-        return False
-    return True
+    for host in host_list:
+        print('NTP:', host, '...', end=' ')
+        ntptime.host = host
+        try:
+            ntptime.settime()
+            print('conectado')
+            return True
+        except:
+            print('no conectado!')
+    return False
 
 def wlan_connect(ssid ,password):
     ''' activa y conecta la red WiFi '''

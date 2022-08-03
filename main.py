@@ -213,6 +213,8 @@ while True:
             with open('/sd/test.txt', 'a') as file:
                 file.write(data_str)
             os.umount('/sd')
+        else:
+            print('No hay memoria SD!!!')
         data = data_clean(data)
         data_dic['ndata'] = 0
 
@@ -227,7 +229,7 @@ while True:
         request = str(conn.recv(1024))
         #print('Content = %s' % str(request))
     except  (OSError):
-        print('*', end= ' ')
+        #print('*', end= ' ')
         continue
     req_pos = request.find('/atmlog?')
     print(request)
@@ -256,6 +258,8 @@ while True:
                 with open('/sd/test.txt') as file:
                     conn.send(file.read())
                 os.umount('/sd')
+            else:
+                print('No hay memoria SD!!!')
     else:
         response = web_page()
         conn.send(response)
