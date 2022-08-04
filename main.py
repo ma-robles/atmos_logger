@@ -210,6 +210,7 @@ while True:
         data_str += '\n'
         if dlog.check_SD(sd) == True:
             print(os.listdir('/sd/'))
+            print(os.stat('/sd/test.txt'))
             with open('/sd/test.txt', 'a') as file:
                 file.write(data_str)
             os.umount('/sd')
@@ -247,19 +248,27 @@ while True:
             if req_dic["view"] == "TRUE":
                 flag_view = True
         if "get_csv" in req_dic:
-            conn.send('HTTP/1.1 200 OK\r\n')
-            if flag_view==True:
-                conn.send('Content-Disposition: inline\r\n')
-                conn.send('Content-Type: text/txt\r\n\r\n')
-            else:
-                conn.send('Content-Disposition: attachment; filename="data.csv"\r\n')
-                conn.send('Content-Type: text/csv\r\n\r\n')
+            file_send = '/sd/'+req_dic['get_csv']
+            print('file:', file_send, end=' ')
             if dlog.check_SD(sd) == True:
+                fsize = os.stat(file_send)
+                print( fsize)
+                conn.send('HTTP/1.1 200 OK\r\n')
+                conn.send('Content_Lenght: '+str(fsize[6])+'\r\n')
+                if flag_view==True:
+                    conn.send('Content-Disposition: inline\r\n')
+                    conn.send('Content-Type: text/txt\r\n\r\n')
+                else:
+                    conn.send('Content-Disposition: attachment; filename="data.csv"\r\n')
+                    conn.send('Content-Type: text/csv\r\n\r\n')
                 with open('/sd/test.txt') as file:
-                    conn.send(file.read())
+                    for line in file:
+                        conn.send(line)
+                    conn.send('\r\n')
                 os.umount('/sd')
             else:
                 print('No hay memoria SD!!!')
+                conn.send('HTTP/1.1 404 Not Found\r\n')
     else:
         response = web_page()
         conn.send(response)

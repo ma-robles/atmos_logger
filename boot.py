@@ -8,7 +8,7 @@ import machine
 import os
 import datalog_lib as dlog
 import ds3231
-import netinfo
+from netinfo import *
 
 # punto de acceso
 #ap= network.WLAN(network.AP_IF)
@@ -39,19 +39,8 @@ else:
 
 sd = SDCard( slot =2, freq =1000000)
 os.mount(sd, '/sd')
-print(os.listdir())
-with open('/sd/test.txt', 'w') as file:
-    file.write('texto de prueba\n')
     
-print('files:')
+print('SD files:')
 print(os.listdir('/sd'))
 os.umount('/sd')
 print('desmontado')
-
-os.mount(sd, '/sd')
-print('montado')
-with open('/sd/test.txt') as file:
-    for row in file:
-        print(row)
-
-os.umount('/sd')
