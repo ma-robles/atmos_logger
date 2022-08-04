@@ -108,28 +108,34 @@ def call_t0(t):
     global f_sample
     f_sample = True
     print('P0=', counter_p0)
+#Definición de intervalos
+#muestreo en segundos
+Δs = 2
+#almacenamiento en minutos
+Δa = 1
+#envio dato instantáneo en minutos
+Δi = 10
+#envio archivo modificado en minutos
+Δe = 10
+#sincronización hora NTP en horas
+Δn = 6
 #Configura timer 0 con el tiempo de muestreo
 t0 = machine.Timer(0)
-t0.init(period=2000, callback=call_t0)
+t0.init(period=Δs*1000, callback=call_t0)
 
-def update_min(time_now, d_minutes):
+#normaliza minuto de inicio con respecto a la hora
+def norm_min(time_now, δmin):
     time_new = list(time_now)
+    time_new[4] = (time_now[4]//δmin)*δmin
     time_new[5] =0
-    time_new = time.mktime(time_new) +d_minutes*60
+    time_new = time.mktime(time_new) +δmin*60
     return time_new
 
 time_now = time.gmtime()
 print('actual:', time_now)
-#configuración de hora de almacenamiento en minutos
-i_save = 1
-time_save= update_min(time_now, i_save)
+time_save= norm_min(time_now, Δa)
 print('save:', time.gmtime(time_save))
-#configuración de hora de envío en minutos
-i_send = 10
-time_send = list(time_now)
-time_send[4] = (time_now[4]//i_send)*i_send
-time_send[5] =0
-time_send = time.mktime(time_send) +i_send*60
+time_send = norm_min(time_now, Δe)
 print('send:', time.gmtime(time_send))
 
 def data_clean(data):
@@ -189,7 +195,7 @@ while True:
     #Almacenamiento
     if time.mktime(time_now) >= time_save:
         print('')
-        time_save = update_min( time_now, i_save)
+        time_save = norm_min( time_now, Δa)
         print('minuto:', time_now)
         data = data_dic['data']
         data = data_mean(data, data_dic['ndata'])
@@ -221,7 +227,7 @@ while True:
 
     if time.mktime(time_now) >= time_send:
         print('')
-        time_send = update_min( time_now, i_send)
+        time_send = norm_min( time_now, Δe)
         print('send:', time_send)
     #print('aceptando conexión... ', end=' ')
     try:
