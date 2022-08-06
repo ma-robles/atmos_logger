@@ -17,7 +17,7 @@ from netinfo import *
 #print(ap.ifconfig())
 
 wlan= dlog.wlan_connect( ssid, password )
-print(wlan.ifconfig())
+print('IP:', wlan.ifconfig()[0])
 
 i2c = I2C(0, scl =Pin(22, Pin.OPEN_DRAIN), sda = Pin(21, Pin.OPEN_DRAIN) )
 print("I2C encontradas:", i2c.scan())
@@ -28,7 +28,7 @@ if dlog.get_date_NTP(['1.mx.pool.ntp.org', 'cronos.cenam.mx']):
     print('hora NTP:', rtc.datetime())
     print('hora ds:', ds3231.get_time(i2c))
     ds3231.set_time(i2c)
-    print('hora ds:', ds3231.get_time(i2c))
+    print('hora ds actualizada:', ds3231.get_time(i2c))
 else:
     print('No NTP')
     print('hora:', rtc.datetime())
