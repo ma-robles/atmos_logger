@@ -11,9 +11,6 @@ rtc = RTC()
 now = rtc.datetime()
 print('fecha:', now)
 #t1 = time.ticks_ms()
-#response = urequests.post("https://maker.ifttt.com/trigger/miguel/with/key/hITnIrHZrQUVdwBjyHkea3Q8I_IGzJRCTMCgPV-hW3o",
-#        data = '{ "value1" : "a", "value2" : "b", "value3" : "c" } ')
-#print(response.text)
 #print('dt:', time.ticks_diff(time.ticks_ms(), t1))
 #print(t1)
 data_str ="---"+",---"*3
@@ -158,11 +155,13 @@ def data_mean(data, ndata):
 data_dic = {}
 data_dic['ndata']=0
 data_dic['data'] = {}
+data_dic['units'] = {}
 data = data_dic['data']
-data['P'] =0
-data['Tp'] =0
-data['uv'] =0
-data['sun'] =0
+units = data_dic['units']
+data['P'] =0; units['P'] = "mbar"
+data['Tp'] =0; units["Tp"] = 'C'
+data['uv'] =0; units["uv"] = "index"
+data['sun'] =0; units["sun"] = "W/m²"
 #data['wd'] =0
 #data['ws'] =0
 #Espera el minuto de almacenamiento siguiente
@@ -178,7 +177,9 @@ t0.init(period=Δs*1000, callback=call_t0)
 
 path_SD = '/sd'
 filename_update ='files_update.json'
+wdt = machine.WDT(timeout =5000)
 while True:
+    wdt.feed()
     time_now = time.gmtime()
     #Almacenamiento
     if time.mktime(time_now) >= add_minute(time_save, Δa):
@@ -200,7 +201,6 @@ while True:
             data_str += ','+ str(data[k])
             print(k, data[k], sep=':', end=' ')
         print('')
-        data_str += '\n'
         print('ndata:', data_dic['ndata'], end=' ', sep='')
         if dlog.check_SD(sd, path_SD) == True:
             #Almacena datos
@@ -214,7 +214,7 @@ while True:
             path_save  = path_SD +'/' +file_save
             path_update = path_SD +'/' +filename_update
             with open(path_save, 'a') as file:
-                file.write(data_str)
+                file.write(data_str +'\n')
             try:
                 with open(path_update) as jsfile:
                     list_update = json.load(jsfile)
@@ -228,6 +228,13 @@ while True:
             print('modificados:', list_update)
         else:
             print('No hay memoria SD!!!')
+        data_json = json.dumps(data_dic)+' '
+        print(data_json)
+        response = urequests.request("PUT", "http://192.168.50.254:8080/echo",
+                headers = {'content-type': 'application/json'},
+                data = data_json,
+            )
+        print(response.text)
         data = data_clean(data)
         data_dic['ndata'] = 0
         #actualiza time_save
