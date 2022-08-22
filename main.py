@@ -163,6 +163,7 @@ data['Tp'] =0; units["Tp"] = 'C'
 data['uv'] =0; units["uv"] = "index"
 data['sun'] =0; units["sun"] = "W/m²"
 #data['wd'] =0
+wdt = machine.WDT(timeout =30000)
 #data['ws'] =0
 #Espera el minuto de almacenamiento siguiente
 print('Esperando arranque:', end ='')
@@ -170,6 +171,7 @@ while time.mktime(time_now) < time.mktime(time_save):
     print('*', end='')
     time_now = time.gmtime()
     time.sleep(1)
+    wdt.feed()
 print('')
 #Configura timer 0 con el tiempo de muestreo
 t0 = machine.Timer(0)
@@ -177,7 +179,6 @@ t0.init(period=Δs*1000, callback=call_t0)
 
 path_SD = '/sd'
 filename_update ='files_update.json'
-wdt = machine.WDT(timeout =5000)
 while True:
     wdt.feed()
     time_now = time.gmtime()
@@ -197,6 +198,7 @@ while True:
                 time_save[4],
                 time_save[5],
                 )
+        data_dic['date'] = data_str
         for k in data.keys():
             data_str += ','+ str(data[k])
             print(k, data[k], sep=':', end=' ')
@@ -230,11 +232,14 @@ while True:
             print('No hay memoria SD!!!')
         data_json = json.dumps(data_dic)+' '
         print(data_json)
-        response = urequests.request("PUT", "http://192.168.50.254:8080/echo",
-                headers = {'content-type': 'application/json'},
-                data = data_json,
-            )
-        print(response.text)
+        try:
+            response = urequests.request("PUT", url_server,
+                    headers = {'content-type': 'application/json'},
+                    data = data_json,
+                )
+            print(response.text)
+        except:
+            print ('No hay conexión con el servidor!')
         data = data_clean(data)
         data_dic['ndata'] = 0
         #actualiza time_save

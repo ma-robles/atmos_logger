@@ -35,7 +35,7 @@ def wlan_connect(ssid ,password):
         wlan.active( True )
         wlan.connect(ssid ,password)
         n= 0
-        print("Conectando a ssid", end =' ')
+        print("Conectando a", ssid, end =' ')
         while not wlan.isconnected():
             print('*', end= '')
             sleep(1)
