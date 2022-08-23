@@ -45,8 +45,11 @@ srvr = http.createServer((request, response) => {
                     }
                     html2 += "</table></body></html>"
                     fs.writeFile( filename, html+html2, function (err){
-                        if (err) throw err;
-                        console.log('saved!');
+                        if (err){
+                            console.log(err);
+                        } else{
+                            console.log('saved!');
+                        }
                     });
                     response.statusCode = 201;
                     response.setHeader('Content-Location', '/nuevo.json');
@@ -55,8 +58,14 @@ srvr = http.createServer((request, response) => {
                     name_csv = request.url.split('/')[2];
                     console.log('csv name:', name_csv);
                     fs.writeFile( name_csv, body, function (err){
-                        if (err) throw err;
-                        console.log('saved!');
+                        if (err){
+                            console.log(err);
+                        } else{
+                            console.log('saved!');
+                            response.statusCode = 200;
+                            response.end();
+
+                        }
                     });
                 } else{
                     response.statusCode = 404;

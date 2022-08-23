@@ -257,40 +257,32 @@ while True:
 
     #envío de archivos de datos
     if time.mktime(time_now) > time_send:
-        fname_send = '/sd/2022_08_05.csv'
+        fname_send = '/sd/2022_08_18.csv'
         print('Enviando archivo:', fname_send, end=',')
         if dlog.check_SD(sd) == True:
             fsize = os.stat(fname_send)
             print(fsize[6], "bytes")
             with open(fname_send, 'rb') as fsend:
-                #try:
+                try:
+                    #separa url, asume que incluye puerto
                     _, _, host, path = url_server.split('/', 3)
                     host, port = host.split(':')
-                    print('host:', host, path, port)
                     addr2 = socket.getaddrinfo(host, port)[0][-1]
                     s2 = socket.socket()
                     s2.connect(addr2)
                     fname = fname_send.split('/')[-1]
-                    print('fname:', fname)
                     s2.send(bytes('PUT /hist/%s HTTP/1.1\r\n' % (fname), 'utf8'))
                     s2.send(bytes('Content-Length: %s\r\n' % (fsize[6]), 'utf8'))
                     s2.send(bytes('Content-Type: text/csv\r\n\r\n', 'utf8'))
                     chunk_size = 1024
                     for chunk in range(0, fsize[6], chunk_size):
                         bdata =  fsend.read(min(chunk_size, fsize[6]-chunk))
-                        print('bdata:', bdata)
                         s2.send( bdata)
-                    #for line in fsend:
-                        #print('>', line)
-                        #s2.send(bytes(line, 'utf8'))
-                        #s2.send(line)
-                    #s2.send(bytes('\r\n', 'utf8'))
                     response = s2.recv(200)
-
                     #print(response.text)
                     print(response)
-                #except:
-                    #print('No hay conexión con servidor')
+                except:
+                    print('No hay conexión con servidor')
             os.umount('/sd')
         else:
             print('No hay memoria SD!')
