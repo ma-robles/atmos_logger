@@ -233,11 +233,13 @@ while True:
             print('No hay memoria SD!!!')
         #carga datos instantáneos en buffer
         data_buffer = data_dic.copy()
+        data_buffer['data'] = data_dic['data'].copy()
         data = data_clean(data)
         data_dic['ndata'] = 0
         #actualiza time_save
         time_save = add_minute(time_save, Δa)
         time_save =time.gmtime(time_save)
+        print('buffer:', data_buffer)
 
     #envío de datos instantáneos
     if time.mktime(time_now) > time_sendi:
@@ -257,7 +259,7 @@ while True:
 
     #envío de archivos de datos
     if time.mktime(time_now) > time_send:
-        fname_send = '/sd/2022_08_18.csv'
+        fname_send = '/sd/2022_08_23.csv'
         print('Enviando archivo:', fname_send, end=',')
         if dlog.check_SD(sd) == True:
             fsize = os.stat(fname_send)
