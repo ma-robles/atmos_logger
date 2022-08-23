@@ -113,9 +113,9 @@ def call_t0(t):
 #almacenamiento en minutos
 Δa = 1
 #envio dato instantáneo en minutos
-Δi = 10
+Δi = 2
 #envio archivo modificado en minutos
-Δe = 10
+Δe = 3
 #sincronización hora NTP en horas
 Δn = 6
 
@@ -139,7 +139,7 @@ print('actual:', time_now)
 time_save =norm_minute(time_now, Δa)
 time_save =time.gmtime(time_save)
 print('save:', time_save)
-time_sendi = norm_minute(time_now, Δe)
+time_sendi = norm_minute(time_now, Δi)
 print('sendi:', time.gmtime(time_sendi))
 time_send = norm_minute(time_now, Δe)
 print('send:', time.gmtime(time_send))
@@ -179,6 +179,7 @@ t0.init(period=Δs*1000, callback=call_t0)
 
 path_SD = '/sd'
 filename_update ='files_update.json'
+data_buffer = {}
 while True:
     wdt.feed()
     time_now = time.gmtime()
@@ -230,7 +231,18 @@ while True:
             print('modificados:', list_update)
         else:
             print('No hay memoria SD!!!')
-        data_json = json.dumps(data_dic)+' '
+        #carga datos instantáneos en buffer
+        data_buffer = data_dic.copy()
+        data = data_clean(data)
+        data_dic['ndata'] = 0
+        #actualiza time_save
+        time_save = add_minute(time_save, Δa)
+        time_save =time.gmtime(time_save)
+
+    #envío de datos instantáneos
+    if time.mktime(time_now) > time_sendi:
+        #envio de datos instantáneos
+        data_json = json.dumps(data_buffer)+' '
         print(data_json)
         try:
             response = urequests.request("PUT", url_server,
@@ -240,11 +252,50 @@ while True:
             print(response.text)
         except:
             print ('No hay conexión con el servidor!')
-        data = data_clean(data)
-        data_dic['ndata'] = 0
-        #actualiza time_save
-        time_save = add_minute(time_save, Δa)
-        time_save =time.gmtime(time_save)
+        time_sendi = add_minute( time.gmtime(time_sendi), Δi)
+        print('siguiente instantáneo:', time.gmtime(time_sendi))
+
+    #envío de archivos de datos
+    if time.mktime(time_now) > time_send:
+        fname_send = '/sd/2022_08_05.csv'
+        print('Enviando archivo:', fname_send, end=',')
+        if dlog.check_SD(sd) == True:
+            fsize = os.stat(fname_send)
+            print(fsize[6], "bytes")
+            with open(fname_send, 'rb') as fsend:
+                #try:
+                    _, _, host, path = url_server.split('/', 3)
+                    host, port = host.split(':')
+                    print('host:', host, path, port)
+                    addr2 = socket.getaddrinfo(host, port)[0][-1]
+                    s2 = socket.socket()
+                    s2.connect(addr2)
+                    fname = fname_send.split('/')[-1]
+                    print('fname:', fname)
+                    s2.send(bytes('PUT /hist/%s HTTP/1.1\r\n' % (fname), 'utf8'))
+                    s2.send(bytes('Content-Length: %s\r\n' % (fsize[6]), 'utf8'))
+                    s2.send(bytes('Content-Type: text/csv\r\n\r\n', 'utf8'))
+                    chunk_size = 1024
+                    for chunk in range(0, fsize[6], chunk_size):
+                        bdata =  fsend.read(min(chunk_size, fsize[6]-chunk))
+                        print('bdata:', bdata)
+                        s2.send( bdata)
+                    #for line in fsend:
+                        #print('>', line)
+                        #s2.send(bytes(line, 'utf8'))
+                        #s2.send(line)
+                    #s2.send(bytes('\r\n', 'utf8'))
+                    response = s2.recv(200)
+
+                    #print(response.text)
+                    print(response)
+                #except:
+                    #print('No hay conexión con servidor')
+            os.umount('/sd')
+        else:
+            print('No hay memoria SD!')
+        time_send = add_minute( time.gmtime(time_send), Δe)
+        print('siguiente archivo:', time.gmtime(time_send))
 
     if f_sample == True:
         f_sample = False
@@ -281,10 +332,7 @@ while True:
             print(k, data[k], sep=':', end =' ')
         print('')
 
-    if time.mktime(time_now) >= time_send:
-        print('')
-        time_send = norm_minute( time_now, Δe)
-        print('send:', time_send)
+    #atendiendo llamadas al servidor interno
     #print('aceptando conexión... ', end=' ')
     try:
         conn, addr = s.accept()
@@ -321,9 +369,9 @@ while True:
                     conn.send('Content-Disposition: inline\r\n')
                     conn.send('Content-Type: text/txt\r\n\r\n')
                 else:
-                    conn.send('Content-Disposition: attachment; filename="data.csv"\r\n')
+                    conn.send('Content-Disposition: attachment; filename= /%s\r\n' % req_dic['get_csv'])
                     conn.send('Content-Type: text/csv\r\n\r\n')
-                with open('/sd/test.txt') as file:
+                with open(file_send) as file:
                     for line in file:
                         conn.send(line)
                     conn.send('\r\n')
