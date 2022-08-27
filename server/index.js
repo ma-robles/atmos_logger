@@ -14,7 +14,6 @@ var html = '<html lang="es"><head>\
 
 srvr = http.createServer((request, response) => {
     const { headers, method, url } = request;
-    console.log(request.url);
     let body=[];
     request.on('error', (err) => {
         console.error(err);
@@ -25,7 +24,7 @@ srvr = http.createServer((request, response) => {
             // At this point, we have the headers, method, url and body, and can now
             // do whatever we need to in order to respond to this request.
 
-            console.log(headers, body, url);
+            console.log(headers, url);
             if (request.method === 'PUT'){
                 if (request.url === '/insta') {
                     bodyJson = JSON.parse(body);
@@ -78,5 +77,5 @@ srvr = http.createServer((request, response) => {
         });
 });
 srvr.listen(8080, '192.168.50.254');
-srvr.timeout = 1500;
+srvr.timeout = 5000;
 console.log('timeout:', srvr.timeout);
