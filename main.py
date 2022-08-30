@@ -180,12 +180,17 @@ t0.init(period=Δs*1000, callback=call_t0)
 path_SD = '/sd'
 filename_update ='files_update.json'
 data_buffer = {}
-timeout_send =5000
+timeout_send = 1.0
 #separa url, asume que incluye puerto y protocolo
 protoc, _, host = url_server.split('/',2)
 host, port = host.split(':')
 addr2 = socket.getaddrinfo(host, port)[0][-1]
 print(addr2)
+def cb_timeout(e):
+    print('timeout error', )
+    wdt.feed()
+    raise OSError
+
 while True:
     wdt.feed()
     time_now = time.gmtime()
@@ -252,11 +257,11 @@ while True:
         #envio de datos instantáneos
         data_json = json.dumps(data_buffer)+' '
         print('Enviando datos instantaneos a', host, data_buffer['data'])
+        sock_send = socket.socket()
+        sock_send.settimeout(timeout_send)
         try:
-            sock_send = socket.socket()
-            sock_send.settimeout(timeout_send)
             sock_send.connect(addr2)
-            fname = fname_send.split('/')[-1]
+            print('connect')
             sock_send.send(bytes('PUT /insta HTTP/1.1\r\n', 'utf8'))
             sock_send.send(bytes('Content-Length: %s\r\n' % (len(data_json)+1), 'utf8'))
             sock_send.send(bytes('Content-Type: application/json\r\n\r\n', 'utf8'))
@@ -267,7 +272,7 @@ while True:
                 print('datos instantáneos recibidos')
             else:
                 print(response)
-        except:
+        except OSError:
             print ('No hay conexión con el servidor ', host)
         time_sendi = add_minute( time.gmtime(time_sendi), Δi)
         print('siguiente instantáneo:', time.gmtime(time_sendi))
@@ -280,9 +285,9 @@ while True:
             fsize = os.stat(fname_send)
             print(fsize[6], "bytes")
             with open(fname_send, 'rb') as fsend:
+                sock_send = socket.socket()
+                sock_send.settimeout(timeout_send)
                 try:
-                    sock_send = socket.socket()
-                    sock_send.settimeout(timeout_send)
                     sock_send.connect(addr2)
                     fname = fname_send.split('/')[-1]
                     sock_send.send(bytes('PUT /hist/%s HTTP/1.1\r\n' % (fname), 'utf8'))
@@ -299,7 +304,7 @@ while True:
                         print('archivo recibido')
                     else:
                         print(response)
-                except:
+                except OSError:
                     sock_send.close()
                     print('No hay conexión con servidor')
             os.umount('/sd')
