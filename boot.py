@@ -8,8 +8,11 @@ import machine
 import os
 import datalog_lib as dlog
 import ds3231
+import sht75
 from netinfo import *
 
+sht_dat = Pin(26, Pin.OUT, Pin.PULL_UP)
+sht_clk = Pin(27, Pin.OUT, Pin.PULL_UP)
 # punto de acceso
 #ap= network.WLAN(network.AP_IF)
 #ap.active(True)

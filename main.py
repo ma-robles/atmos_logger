@@ -23,6 +23,8 @@ def web_page():
 
   header = [
           "Fecha",
+          "Temperatura",
+          "Humedad rel",
           "Presión",
           "Temperatura (p)",
           "Viento (dir)",
@@ -31,6 +33,8 @@ def web_page():
           ]
   units =[
           "UTC",
+          "C",
+          "%",
           "mbar",
           "C",
           "º",
@@ -38,31 +42,11 @@ def web_page():
           "W/m2",
           ]
 
-  html = """<html lang="es"><head>
+  html = """<!DOCTYPE html>
+  <html lang="es"><head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    #data_table{
-        font-family: Arial, Helvetica, sans-serif;
-        border-collapse: collapse;
-        width: 100%:
-    }
-
-    #data_table td, #data_table th {
-        border: 1px solid #ddd;
-        padding: 8px;
-    }
-
-    #data_table tr:nth-child(even){background-color: #f2f2f2;}
-    #data_table tr:hover {background-color: #ddd;}
-    #data_table th{
-        padding-top: 12px;
-        padding-bottom: 12px;
-        text-align: left;
-        background-color: #5499C7;
-        color: white;
-    }
-    </style>
+  <link rel="stylesheet" href="atmos_log.css">
   </head>
   <body><h1> Últimos datos recibidos:</h1>"""
   html += '<table id="data_table" >'
@@ -158,6 +142,8 @@ data_dic['data'] = {}
 data_dic['units'] = {}
 data = data_dic['data']
 units = data_dic['units']
+data['RH'] =0; units["RH"] = '%'
+data['T'] =0; units["T"] = 'C'
 data['P'] =0; units['P'] = "mbar"
 data['Tp'] =0; units["Tp"] = 'C'
 data['uv'] =0; units["uv"] = "index"
@@ -315,6 +301,7 @@ while True:
 
     if f_sample == True:
         f_sample = False
+        T, RH = sht75.trh(sht_dat, sht_clk)
         Tp, p =bmp180.pressure(i2c)
         now = rtc.datetime()
         wd = adc_wd.read()
@@ -327,21 +314,14 @@ while True:
         data['Tp'] += Tp
         data['uv'] += uv
         data['sun'] += sun
+        data['RH'] += RH
+        data['T'] += T
         #data['wd'] += wd
 
-        data_str = '{}/{:02}/{:02} {:02}:{:02}:{:02},{},{},{},{},{}'.format(
-            now[0],
-            now[1],
-            now[2],
-            now[4],
-            now[5],
-            now[6],
-            p/100,
-            Tp/10,
-            360*wd/4095,
-            uv,
-            sun,
-            )
+        data_str ='{}/{:02}/{:02} {:02}:{:02}:{:02},'.format(
+                now[0], now[1], now[2], now[4], now[5], now[6])
+        data_str +='{:5.1f},{:3.0f},{:4.0f},{:5.1f},{:3.0f},{:2.0f},{:4.0f}'.format(
+                T, RH, p/100, Tp/10, 360*wd/4095, uv, sun,)
         print(data_str)
 
     #atendiendo llamadas al servidor interno
@@ -354,6 +334,19 @@ while True:
     except  (OSError):
         #print('*', end= ' ')
         continue
+    req_pos = request.find("atmos_log.css")
+    print('css pos:', req_pos)
+    if req_pos!= -1:
+        file_send = '/atmos_log.css'
+        fsize = os.stat(file_send)
+        print( fsize)
+        conn.send('HTTP/1.1 200 OK\r\n')
+        conn.send('Content_Lenght: '+str(fsize[6])+'\r\n')
+        conn.send('Content-Type: text/css\r\n\r\n')
+        with open(file_send) as file:
+            for line in file:
+                conn.send(line)
+            conn.send('\r\n')
     req_pos = request.find('/atmlog?')
     print(request)
     if req_pos == 6:

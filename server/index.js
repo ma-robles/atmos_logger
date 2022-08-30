@@ -7,6 +7,7 @@ var filename = "test.html";
 var html = '<html lang="es"><head>\
 <meta charset="utf-8" />\
 <meta name="viewport" content="width=device-width, initial-scale=1">\
+<link rel="stylesheet" href="atmos_log.css">\
 </head>\
 <body><h1> Últimos datos recibidos:</h1>\
 <table id="data_table" >\
