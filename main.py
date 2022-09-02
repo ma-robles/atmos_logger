@@ -99,7 +99,7 @@ def call_t0(t):
 #envio dato instantáneo en minutos
 Δi = 2
 #envio archivo modificado en minutos
-Δe = 3
+Δe = 5
 #sincronización hora NTP en horas
 Δn = 6
 
@@ -240,62 +240,72 @@ while True:
 
     #envío de datos instantáneos
     if time.mktime(time_now) > time_sendi and data_buffer!={}:
-        #envio de datos instantáneos
-        data_json = json.dumps(data_buffer)+' '
-        print('Enviando datos instantaneos a', host, data_buffer['data'])
-        sock_send = socket.socket()
-        sock_send.settimeout(timeout_send)
-        try:
-            sock_send.connect(addr2)
-            print('connect')
-            sock_send.send(bytes('PUT /insta HTTP/1.1\r\n', 'utf8'))
-            sock_send.send(bytes('Content-Length: %s\r\n' % (len(data_json)+1), 'utf8'))
-            sock_send.send(bytes('Content-Type: application/json\r\n\r\n', 'utf8'))
-            sock_send.send(data_json)
-            response = sock_send.recv(200)
-            sock_send.close()
-            if response.split()[1] == b'201':
-                print('datos instantáneos recibidos')
-            else:
-                print(response)
-        except OSError:
-            print ('No hay conexión con el servidor ', host)
+        if wlan.isconnected() == False:
+            wlan = dlog.wlan_connect(ssid, password)
+        if wlan != None:
+            data_json = json.dumps(data_buffer)+' '
+            print('Enviando datos instantaneos a', host, data_buffer['data'])
+            sock_send = socket.socket()
+            sock_send.settimeout(timeout_send)
+            try:
+                sock_send.connect(addr2)
+                print('connect')
+                sock_send.send(bytes('PUT /insta HTTP/1.1\r\n', 'utf8'))
+                sock_send.send(bytes('Content-Length: %s\r\n' % (len(data_json)+1), 'utf8'))
+                sock_send.send(bytes('Content-Type: application/json\r\n\r\n', 'utf8'))
+                sock_send.send(data_json)
+                response = sock_send.recv(200)
+                sock_send.close()
+                if response.split()[1] == b'201':
+                    print('datos instantáneos recibidos')
+                else:
+                    print(response)
+            except OSError:
+                print ('No hay conexión con el servidor ', host)
+        else:
+            print('No se pido conectar a WiFi')
         time_sendi = add_minute( time.gmtime(time_sendi), Δi)
         print('siguiente instantáneo:', time.gmtime(time_sendi))
 
     #envío de archivos de datos
     if time.mktime(time_now) > time_send:
-        fname_send = '/sd/2022_08_23.csv'
-        print('Enviando archivo:', fname_send, end=',')
-        if dlog.check_SD(sd) == True:
-            fsize = os.stat(fname_send)
-            print(fsize[6], "bytes")
-            with open(fname_send, 'rb') as fsend:
-                sock_send = socket.socket()
-                sock_send.settimeout(timeout_send)
-                try:
-                    sock_send.connect(addr2)
-                    fname = fname_send.split('/')[-1]
-                    sock_send.send(bytes('PUT /hist/%s HTTP/1.1\r\n' % (fname), 'utf8'))
-                    sock_send.send(bytes('Content-Length: %s\r\n' % (fsize[6]), 'utf8'))
-                    sock_send.send(bytes('Content-Type: text/csv\r\n\r\n', 'utf8'))
-                    chunk_size = 1024
-                    for chunk in range(0, fsize[6], chunk_size):
-                        bdata =  fsend.read(min(chunk_size, fsize[6]-chunk))
-                        sock_send.send( bdata)
-                    response = sock_send.recv(200)
-                    sock_send.close()
+        if wlan.isconnected() == False:
+            wlan = dlog.wlan_connect(ssid, password)
+        if wlan != None:
+            fname_send = '/sd/{}_{:02}_{:02}.csv'.format(
+                    time_now[0], time_now[1], time_now[2])
+            print('Enviando archivo:', fname_send, end=',')
+            if dlog.check_SD(sd) == True:
+                fsize = os.stat(fname_send)
+                print(fsize[6], "bytes")
+                with open(fname_send, 'rb') as fsend:
+                    sock_send = socket.socket()
+                    sock_send.settimeout(timeout_send)
+                    try:
+                        sock_send.connect(addr2)
+                        fname = fname_send.split('/')[-1]
+                        sock_send.send(bytes('PUT /hist/%s HTTP/1.1\r\n' % (fname), 'utf8'))
+                        sock_send.send(bytes('Content-Length: %s\r\n' % (fsize[6]), 'utf8'))
+                        sock_send.send(bytes('Content-Type: text/csv\r\n\r\n', 'utf8'))
+                        chunk_size = 1024
+                        for chunk in range(0, fsize[6], chunk_size):
+                            bdata =  fsend.read(min(chunk_size, fsize[6]-chunk))
+                            sock_send.send( bdata)
+                        response = sock_send.recv(200)
+                        sock_send.close()
 
-                    if response.split()[1] == b'200':
-                        print('archivo recibido')
-                    else:
-                        print(response)
-                except OSError:
-                    sock_send.close()
-                    print('No hay conexión con servidor')
-            os.umount('/sd')
+                        if response.split()[1] == b'200':
+                            print('archivo recibido')
+                        else:
+                            print(response)
+                    except OSError:
+                        sock_send.close()
+                        print('No hay conexión con servidor')
+                os.umount('/sd')
+            else:
+                print('No hay memoria SD!')
         else:
-            print('No hay memoria SD!')
+            print('No se pido conectar a WiFi')
         time_send = add_minute( time.gmtime(time_send), Δe)
         print('siguiente archivo:', time.gmtime(time_send))
 
@@ -326,6 +336,10 @@ while True:
 
     #atendiendo llamadas al servidor interno
     #print('aceptando conexión... ', end=' ')
+    if wlan.isconnected() == False:
+        wlan = dlog.wlan_connect(ssid, password)
+    if wlan == None:
+        continue
     try:
         conn, addr = s.accept()
         #print('Got a connection from %s' % str(addr))

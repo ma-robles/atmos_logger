@@ -33,6 +33,7 @@ def wlan_connect(ssid ,password):
     try:
         wlan = network.WLAN(network.STA_IF)
         wlan.active( True )
+        print(wlan.scan())
         wlan.connect(ssid ,password)
         n= 0
         print("Conectando a", ssid, end =' ')
