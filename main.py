@@ -177,7 +177,6 @@ def cb_timeout(e):
     wdt.feed()
     raise OSError
 
-ID="cca"
 while True:
     wdt.feed()
     wlan.active(False)
