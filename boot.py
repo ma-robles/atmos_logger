@@ -20,7 +20,7 @@ sht_clk = Pin(27, Pin.OUT, Pin.PULL_UP)
 #print(ap.ifconfig())
 
 wlan= dlog.wlan_connect( ssid, password )
-if wlanisconnected() == True:
+if wlan.isconnected() == True:
     print('IP:', wlan.ifconfig()[0])
 
     i2c = I2C(0, scl =Pin(22, Pin.OPEN_DRAIN), sda = Pin(21, Pin.OPEN_DRAIN) )
@@ -41,6 +41,7 @@ if wlanisconnected() == True:
         print('DS:', rtc.datetime())
 else:
     print('No se pudo conectar!')
+wlan.active(False)
 
 sd = SDCard( slot =2, freq =1000000)
 os.mount(sd, '/sd')

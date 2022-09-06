@@ -1,8 +1,19 @@
 from time import sleep_us
+from time import sleep_ms
 from machine import Pin
 #sht_clk
 #sht_dat
-def trh(sht_dat, sht_clk):
+def get_T(sht_dat, sht_clk):
+    reinicio_com( sht_dat, sht_clk)
+    ini_trans(sht_dat, sht_clk)
+    envia_byte(0b00000011,sht_dat, sht_clk);
+
+def get_RH(sht_dat, sht_clk):
+    reinicio_com(sht_dat, sht_clk)
+    ini_trans(sht_dat, sht_clk)
+    envia_byte(0b00000101,sht_dat, sht_clk)
+
+def convert_trh( t, rh):
     d1 = -39.65
     d2 = 0.01
     c1 = -2.0468
@@ -10,15 +21,24 @@ def trh(sht_dat, sht_clk):
     c3 = -1.5955e-6
     t1 = 0.01
     t2 = 0.00008
-    reinicio_com( sht_dat, sht_clk)
-    ini_trans(sht_dat, sht_clk)
-    envia_byte(0b00000011,sht_dat, sht_clk);
-    t = lee_2bytes(sht_dat, sht_clk)
-    reinicio_com(sht_dat, sht_clk)
-    ini_trans(sht_dat, sht_clk)
-    envia_byte(0b00000101,sht_dat, sht_clk)
-    rh = lee_2bytes(sht_dat, sht_clk)
     T = d1 + d2 *t
+    RHl = c1 +c2*rh +c3*rh*rh
+    RH = (T-25)*(t1+t2*rh)+RHl
+    return T,RH
+
+def trh(sht_dat, sht_clk):
+    get_T(sht_dat, sht_clk)
+    d1 = -39.65
+    d2 = 0.01
+    c1 = -2.0468
+    c2 = 0.0367
+    c3 = -1.5955e-6
+    t1 = 0.01
+    t2 = 0.00008
+    t = lee_2bytes(sht_dat, sht_clk)
+    get_RH(sht_dat, sht_clk)
+    T = d1 + d2 *t
+    rh = lee_2bytes(sht_dat, sht_clk)
     RHl = c1 +c2*rh +c3*rh*rh
     RH = (T-25)*(t1+t2*rh)+RHl
     return T,RH
@@ -78,11 +98,11 @@ def lee_2bytes(sht_dat, sht_clk):
     # define el tiempo de espera
     # el máximo es 320ms para una medición de 14 bits
     # 400 ms
-    ntry = 4000 
+    ntry = 10 
     for i in range(ntry):
         if sht_dat.value() == 0:
             break
-        sleep_us(100)
+        sleep_ms(40)
     rcv = 0
     for i in range(15, -1, -1):
         sleep_us(2)

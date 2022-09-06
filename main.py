@@ -5,11 +5,11 @@ import datalog_lib as dlog
 import bmp180
 import json
 
-print('sd', sd)
-
 rtc = RTC()
 now = rtc.datetime()
 print('fecha:', now)
+machine.freq(80000000)
+print('CPU freq:', machine.freq()/1e6)
 #t1 = time.ticks_ms()
 #print('dt:', time.ticks_diff(time.ticks_ms(), t1))
 #print(t1)
@@ -89,7 +89,7 @@ def call_t0(t):
     global counter_p0
     global f_sample
     f_sample = True
-    print('P0=', counter_p0)
+    #print('P0=', counter_p0)
 #Definición de intervalos
 # Δs<=Δa<=Δi<=Δe
 #muestreo en segundos
@@ -99,7 +99,7 @@ def call_t0(t):
 #envio dato instantáneo en minutos
 Δi = 2
 #envio archivo modificado en minutos
-Δe = 5
+Δe = 20
 #sincronización hora NTP en horas
 Δn = 6
 
@@ -149,14 +149,14 @@ data['Tp'] =0; units["Tp"] = 'C'
 data['uv'] =0; units["uv"] = "index"
 data['sun'] =0; units["sun"] = "W/m²"
 #data['wd'] =0
-wdt = machine.WDT(timeout =30000)
+wdt = machine.WDT(timeout =60000)
 #data['ws'] =0
 #Espera el minuto de almacenamiento siguiente
 print('Esperando arranque:', end ='')
 while time.mktime(time_now) < time.mktime(time_save):
     print('*', end='')
     time_now = time.gmtime()
-    time.sleep(1)
+    time.sleep(2)
     wdt.feed()
 print('')
 #Configura timer 0 con el tiempo de muestreo
@@ -177,8 +177,10 @@ def cb_timeout(e):
     wdt.feed()
     raise OSError
 
+ID="cca"
 while True:
     wdt.feed()
+    wlan.active(False)
     time_now = time.gmtime()
     #Almacenamiento
     if time.mktime(time_now) >= add_minute(time_save, Δa):
@@ -204,7 +206,8 @@ while True:
         print('ndata:', data_dic['ndata'], end=' ', sep='')
         if dlog.check_SD(sd, path_SD) == True:
             #Almacena datos
-            file_save = '{}_{:02}_{:02}.csv'.format(
+            file_save = '{}_{}_{:02}_{:02}.csv'.format(
+                    ID,
                     time_save[0],
                     time_save[1],
                     time_save[2],
@@ -236,7 +239,7 @@ while True:
         #actualiza time_save
         time_save = add_minute(time_save, Δa)
         time_save =time.gmtime(time_save)
-        print('buffer:', data_buffer)
+        #print('buffer:', data_buffer)
 
     #envío de datos instantáneos
     if time.mktime(time_now) > time_sendi and data_buffer!={}:
@@ -264,6 +267,7 @@ while True:
                 print ('No hay conexión con el servidor ', host)
         else:
             print('No se pido conectar a WiFi')
+        wlan.active(False)
         time_sendi = add_minute( time.gmtime(time_sendi), Δi)
         print('siguiente instantáneo:', time.gmtime(time_sendi))
 
@@ -272,8 +276,8 @@ while True:
         if wlan.isconnected() == False:
             wlan = dlog.wlan_connect(ssid, password)
         if wlan != None:
-            fname_send = '/sd/{}_{:02}_{:02}.csv'.format(
-                    time_now[0], time_now[1], time_now[2])
+            fname_send = '/sd/{}_{}_{:02}_{:02}.csv'.format(
+                    ID, time_now[0], time_now[1], time_now[2])
             print('Enviando archivo:', fname_send, end=',')
             if dlog.check_SD(sd) == True:
                 fsize = os.stat(fname_send)
@@ -306,17 +310,23 @@ while True:
                 print('No hay memoria SD!')
         else:
             print('No se pido conectar a WiFi')
+        wlan.active(False)
         time_send = add_minute( time.gmtime(time_send), Δe)
         print('siguiente archivo:', time.gmtime(time_send))
 
     if f_sample == True:
+        start = time.ticks_ms()
         f_sample = False
-        T, RH = sht75.trh(sht_dat, sht_clk)
+        sht75.get_T(sht_dat, sht_clk)
         Tp, p =bmp180.pressure(i2c)
+        t = sht75.lee_2bytes( sht_dat, sht_clk )
+        sht75.get_RH(sht_dat, sht_clk)
         now = rtc.datetime()
         wd = adc_wd.read()
         uv = adc_uv.read()
         sun = adc_sun.read()
+        rh = sht75.lee_2bytes( sht_dat, sht_clk )
+        T, RH = sht75.convert_trh( t, rh)
         #acumulando
         data = data_dic['data']
         data_dic['ndata'] +=1
@@ -327,13 +337,17 @@ while True:
         data['RH'] += RH
         data['T'] += T
         #data['wd'] += wd
+        #print('Δ1 =', time.ticks_diff(time.ticks_ms(), start))
 
         data_str ='{}/{:02}/{:02} {:02}:{:02}:{:02},'.format(
                 now[0], now[1], now[2], now[4], now[5], now[6])
         data_str +='{:5.1f},{:3.0f},{:4.0f},{:5.1f},{:3.0f},{:2.0f},{:4.0f}'.format(
                 T, RH, p/100, Tp/10, 360*wd/4095, uv, sun,)
-        print(data_str)
+        #print(data_str)
+        #print('Δ2 =', time.ticks_diff(time.ticks_ms(), start))
 
+    time.sleep_ms(500)
+    continue
     #atendiendo llamadas al servidor interno
     #print('aceptando conexión... ', end=' ')
     if wlan.isconnected() == False:
