@@ -44,7 +44,7 @@ srvr = http.createServer((request, response) => {
                         html2 += "<tr>"
                     }
                     html2 += "</table></body></html>"
-                    fs.writeFile( filename, html+html2, function (err){
+                    fs.writeFile( bodyJson['id']+'_'+filename, html+html2, function (err){
                         if (err){
                             console.log(err);
                         } else{

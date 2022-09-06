@@ -189,7 +189,7 @@ while True:
         #Procesa acumulados
         data = data_dic['data']
         data = data_mean(data, data_dic['ndata'])
-
+        data_dic['id'] = ID
         data_str = '{}/{:02}/{:02} {:02}:{:02}:{:02}'.format(
                 time_save[0],
                 time_save[1],
