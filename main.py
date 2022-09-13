@@ -1,10 +1,4 @@
-import time
-from machine import RTC
-import urequests
-import datalog_lib as dlog
-import bmp180
-import json
-
+print('i2C:', i2c.scan())
 rtc = RTC()
 now = rtc.datetime()
 print('fecha:', now)
@@ -59,30 +53,6 @@ def web_page():
           html += '</tr>'
   html += "</table></body></html>"
   return html
-
-i2c = I2C(0, scl =Pin(22, Pin.OPEN_DRAIN), sda = Pin(21, Pin.OPEN_DRAIN) )
-#configuración de socket
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', 80))
-s.listen(5)
-s.settimeout(0)
-#canales analógicos
-adc_wd = machine.ADC(Pin(33))
-adc_wd.atten(machine.ADC.ATTN_11DB)
-adc_uv= machine.ADC(Pin(34))
-adc_uv.atten(machine.ADC.ATTN_11DB)
-adc_sun = machine.ADC(Pin(35))
-adc_sun.atten(machine.ADC.ATTN_11DB)
-
-#conteo de pulsos 0
-counter_p0=0
-def call_p0(p):
-    global counter_p0
-    counter_p0 +=1
-    print(p.value(), counter_p0, time.ticks_ms())
-
-p0 = Pin(25, Pin.IN, Pin.PULL_UP)
-p0.irq( call_p0,  trigger=Pin.IRQ_FALLING)
 
 f_sample = False
 def call_t0(t):
@@ -345,7 +315,7 @@ while True:
         #print(data_str)
         #print('Δ2 =', time.ticks_diff(time.ticks_ms(), start))
 
-    time.sleep_ms(500)
+    machine.deepsleep(500)
     continue
     #atendiendo llamadas al servidor interno
     #print('aceptando conexión... ', end=' ')
